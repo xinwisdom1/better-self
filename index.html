@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>To Be A Better Self | 實相驗證原型 v2.0</title>
+    <title>To Be A Better Self | 實相驗證系統 v2.1</title>
     <script src="https://cdn.jsdelivr.net/npm/exif-js"></script>
     <style>
         :root {
@@ -25,21 +25,24 @@
             flex-direction: column;
             align-items: center;
             min-height: 100vh;
+            padding-bottom: 50px;
         }
 
         header {
-            margin-top: 40px;
+            margin-top: 30px;
             text-align: center;
+            padding: 0 20px;
         }
 
         h1 {
             font-weight: 300;
             letter-spacing: 2px;
             margin-bottom: 5px;
+            font-size: 1.5rem;
         }
 
         .subtitle {
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             color: #7f8c8d;
         }
 
@@ -47,22 +50,22 @@
             width: 90%;
             max-width: 850px;
             background: white;
-            padding: 30px;
-            margin-top: 30px;
-            border-radius: 4px;
+            padding: 20px;
+            margin-top: 20px;
+            border-radius: 8px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.05);
         }
 
         .comparison-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 25px;
-            margin-bottom: 30px;
+            gap: 15px;
+            margin-bottom: 20px;
         }
 
         .photo-box {
             border: 1px dashed var(--border-color);
-            aspect-ratio: 4 / 3;
+            aspect-ratio: 3 / 4;
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -70,14 +73,14 @@
             position: relative;
             background-color: #fafafa;
             overflow: hidden;
-            border-radius: 4px;
+            border-radius: 6px;
         }
 
         .photo-box label {
-            font-size: 0.85rem;
+            font-size: 0.8rem;
             color: #95a5a6;
             z-index: 5;
-            padding: 10px;
+            padding: 5px;
             text-align: center;
         }
 
@@ -95,24 +98,19 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 10px;
-        }
-
-        .button-row {
-            display: flex;
-            gap: 10px;
-            width: 100%;
+            gap: 8px;
         }
 
         button {
-            flex: 1;
-            padding: 10px 15px;
+            width: 100%;
+            padding: 12px 5px;
             border: 1px solid var(--primary-accent);
             background-color: white;
             color: var(--primary-accent);
             cursor: pointer;
-            transition: 0.3s;
-            font-size: 0.85rem;
+            transition: 0.2s;
+            font-size: 0.9rem;
+            border-radius: 4px;
         }
 
         button.main-action {
@@ -123,120 +121,100 @@
         button:disabled {
             border-color: var(--disabled-color);
             color: var(--disabled-color);
-            background-color: white;
+            background-color: #f9f9f9;
             cursor: not-allowed;
         }
 
         .status-panel {
-            margin-top: 30px;
-            padding: 20px;
+            margin-top: 20px;
+            padding: 15px;
             background-color: #fdfdfd;
             border: 1px solid var(--border-color);
-            font-size: 0.9rem;
-            border-radius: 4px;
-            min-height: 60px;
-        }
-
-        video {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            position: absolute;
-            display: none;
+            font-size: 0.85rem;
+            border-radius: 6px;
+            line-height: 1.5;
         }
 
         input[type="file"] {
             display: none;
         }
+
+        /* 隱藏不常用的開啟鏡頭(視訊串流)，手機版建議用拍照上傳 */
+        .cam-btn { display: none; }
     </style>
 </head>
 <body>
 
 <header>
     <h1>To Be A Better Self</h1>
-    <div class="subtitle">實相驗證系統 | 工程技術實驗原型 v2.0</div>
+    <div class="subtitle">實相驗證系統 | 行動優化版 v2.1</div>
 </header>
 
 <div class="container">
     <div class="comparison-grid">
         <div class="control-group">
             <div class="photo-box" id="box-before">
-                <label id="label-before">取得任務前證據<br>(Before)</label>
-                <video id="video-before" autoplay playsinline></video>
+                <label id="label-before">任務前證據<br>(Before)</label>
                 <img id="img-before" class="preview-img">
             </div>
-            <div class="button-row">
-                <button onclick="startCamera('before')">開啟鏡頭</button>
-                <button onclick="document.getElementById('file-before').click()">上傳檔案</button>
-            </div>
-            <input type="file" id="file-before" accept="image/*" onchange="handleFile(this, 'before')">
-            <button class="main-action" id="snap-before" style="display:none; width:100%;" onclick="takeSnapshot('before')">拍照</button>
+            <input type="file" id="file-before" accept="image/*" capture="camera" onchange="handleFile(this, 'before')">
+            <button class="main-action" onclick="document.getElementById('file-before').click()">拍攝 / 上傳</button>
         </div>
 
         <div class="control-group">
             <div class="photo-box" id="box-after">
-                <label id="label-after">取得任務後成果<br>(After)</label>
-                <video id="video-after" autoplay playsinline></video>
+                <label id="label-after">任務後成果<br>(After)</label>
                 <img id="img-after" class="preview-img">
             </div>
-            <div class="button-row">
-                <button id="cam-after-btn" disabled onclick="startCamera('after')">開啟鏡頭</button>
-                <button id="file-after-btn" disabled onclick="document.getElementById('file-after').click()">上傳檔案</button>
-            </div>
-            <input type="file" id="file-after" accept="image/*" onchange="handleFile(this, 'after')">
-            <button class="main-action" id="snap-after" style="display:none; width:100%;" onclick="takeSnapshot('after')">拍照</button>
+            <input type="file" id="file-after" accept="image/*" capture="camera" onchange="handleFile(this, 'after')">
+            <button id="file-after-btn" class="main-action" disabled onclick="document.getElementById('file-after').click()">拍攝 / 上傳</button>
         </div>
     </div>
 
-    <button id="btn-verify" class="main-action" style="width:100%; padding:15px;" disabled>執行現實差異辨識</button>
+    <button id="btn-verify" class="main-action" style="padding:15px; font-weight: bold;" disabled>執行現實差異辨識</button>
 
     <div class="status-panel">
-        <div id="result-message">系統就緒。請輸入證據以啟動驗證邏輯。</div>
+        <div id="result-message">系統就緒。請拍攝證據以啟動驗證。</div>
     </div>
 </div>
 
 <script>
     let hasBefore = false;
     let hasAfter = false;
-    let currentStream = null;
 
-    // 核心邏輯：驗證照片的時間是否為「現在」
+    // 驗證 Exif 時間資訊
     function verifyExifData(file, callback) {
         EXIF.getData(file, function() {
             const dateTime = EXIF.getTag(this, "DateTimeOriginal");
             const msg = document.getElementById('result-message');
             
             if (dateTime) {
-                // Exif 時間格式轉換 (YYYY:MM:DD HH:MM:SS)
                 const parts = dateTime.split(/[: ]/);
                 const photoDate = new Date(parts[0], parts[1]-1, parts[2], parts[3], parts[4], parts[5]);
                 const now = new Date();
-                
-                // 容許誤差值：15 分鐘（考慮到手機傳輸至電腦的時間）
                 const diffMinutes = Math.abs(now - photoDate) / 1000 / 60;
 
+                // 容許 15 分鐘內的照片
                 if (diffMinutes > 15) {
-                    alert(`驗證失敗！\n這張照片拍攝於：${dateTime}\n與當前時間差距過大，請提供即時證據。`);
-                    msg.innerText = "【拒絕受領】偵測到非即時影像證據。";
+                    alert(`驗證失敗！\n照片時間：${dateTime}\n目前系統判定非即時拍攝，請重新開啟相機拍照。`);
+                    msg.innerText = "【攔截】偵測到過期影像證據。";
                     msg.style.color = "var(--error-color)";
                 } else {
-                    console.log("驗證通過：即時照片 (" + dateTime + ")");
                     callback(); 
                 }
             } else {
-                // 如果沒有 Exif (可能是螢幕截圖或通訊軟體壓縮過的圖)
-                alert("警告：此檔案遺失拍攝元數據(Exif)。\n請確保使用手機相機原始檔案上傳，或直接使用電腦鏡頭。");
-                msg.innerText = "【偵測失敗】無法驗證影像真實性。";
+                // 如果是截圖或壓縮圖會抓不到 Exif
+                alert("提醒：偵測不到拍攝原始數據。\n請直接使用相機拍攝，避免使用螢幕截圖。");
+                msg.innerText = "【警告】影像完整性校驗失敗。";
             }
         });
     }
 
-    // 處理檔案上傳
     function handleFile(input, type) {
         if (input.files && input.files[0]) {
             const file = input.files[0];
+            const msg = document.getElementById('result-message');
             
-            // 先過濾時間，通過後才渲染圖片
             verifyExifData(file, () => {
                 const reader = new FileReader();
                 reader.onload = function(e) {
@@ -247,14 +225,13 @@
                     
                     if (type === 'before') {
                         hasBefore = true;
-                        document.getElementById('cam-after-btn').disabled = false;
                         document.getElementById('file-after-btn').disabled = false;
-                        document.getElementById('result-message').innerText = "Before 證據已確認。請開始任務。";
-                        document.getElementById('result-message').style.color = "var(--text-color)";
+                        msg.innerText = "Before 驗證通過。請開始你的任務。";
+                        msg.style.color = "var(--text-color)";
                     } else {
                         hasAfter = true;
                         document.getElementById('btn-verify').disabled = false;
-                        document.getElementById('result-message').innerText = "After 證據已準備就緒，請執行最後辨識。";
+                        msg.innerText = "After 證據已記錄，可執行比對。";
                     }
                 };
                 reader.readAsDataURL(file);
@@ -262,56 +239,11 @@
         }
     }
 
-    // 相機功能組
-    async function startCamera(type) {
-        try {
-            const video = document.getElementById(`video-${type}`);
-            const snapBtn = document.getElementById(`snap-${type}`);
-            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-            video.srcObject = stream;
-            video.style.display = 'block';
-            snapBtn.style.display = 'block';
-            currentStream = stream;
-        } catch (err) {
-            alert("無法存取相機，請檢查瀏覽器設定或改用上傳功能。");
-        }
-    }
-
-    function takeSnapshot(type) {
-        const video = document.getElementById(`video-${type}`);
-        const canvas = document.createElement('canvas');
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        canvas.getContext('2d').drawImage(video, 0, 0);
-        
-        const imgElement = document.getElementById(`img-${type}`);
-        imgElement.src = canvas.toDataURL('image/png');
-        imgElement.style.display = 'block';
-        video.style.display = 'none';
-        document.getElementById(`snap-${type}`).style.display = 'none';
-        document.getElementById(`label-${type}`).style.display = 'none';
-
-        if (currentStream) {
-            currentStream.getTracks().forEach(track => track.stop());
-        }
-
-        if (type === 'before') {
-            hasBefore = true;
-            document.getElementById('cam-after-btn').disabled = false;
-            document.getElementById('file-after-btn').disabled = false;
-        } else {
-            hasAfter = true;
-            document.getElementById('btn-verify').disabled = false;
-        }
-    }
-
-    // 模擬影像差異辨識
     document.getElementById('btn-verify').onclick = function() {
         const msg = document.getElementById('result-message');
-        msg.innerText = "正在分析影像特徵值... 檢查像素位移與實質進展...";
-        
+        msg.innerText = "正在分析影像特徵值...";
         setTimeout(() => {
-            msg.innerText = "【驗證完成】成功偵測到現實改變。實驗數據已紀錄。";
+            msg.innerText = "【驗證完成】成功偵測到物理世界進展。";
             msg.style.color = "var(--success-color)";
         }, 2000);
     };
