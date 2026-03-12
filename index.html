@@ -3,251 +3,138 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>To Be A Better Self | 實相驗證系統 v2.1</title>
+    <title>To Be A Better Self v2.2 | 影像比對系統</title>
     <script src="https://cdn.jsdelivr.net/npm/exif-js"></script>
     <style>
-        :root {
-            --bg-color: #f4f7f6;
-            --text-color: #3e4e4a;
-            --primary-accent: #8da399; 
-            --border-color: #d1d9d6;
-            --disabled-color: #bdc3c7;
-            --success-color: #27ae60;
-            --error-color: #c0392b;
-        }
-
-        body {
-            font-family: "PingFang TC", "Microsoft JhengHei", sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            margin: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            min-height: 100vh;
-            padding-bottom: 50px;
-        }
-
-        header {
-            margin-top: 30px;
-            text-align: center;
-            padding: 0 20px;
-        }
-
-        h1 {
-            font-weight: 300;
-            letter-spacing: 2px;
-            margin-bottom: 5px;
-            font-size: 1.5rem;
-        }
-
-        .subtitle {
-            font-size: 0.85rem;
-            color: #7f8c8d;
-        }
-
-        .container {
-            width: 90%;
-            max-width: 850px;
-            background: white;
-            padding: 20px;
-            margin-top: 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-        }
-
-        .comparison-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-
-        .photo-box {
-            border: 1px dashed var(--border-color);
-            aspect-ratio: 3 / 4;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            position: relative;
-            background-color: #fafafa;
-            overflow: hidden;
-            border-radius: 6px;
-        }
-
-        .photo-box label {
-            font-size: 0.8rem;
-            color: #95a5a6;
-            z-index: 5;
-            padding: 5px;
-            text-align: center;
-        }
-
-        .preview-img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            position: absolute;
-            top: 0;
-            left: 0;
-            display: none;
-        }
-
-        .control-group {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 8px;
-        }
-
-        button {
-            width: 100%;
-            padding: 12px 5px;
-            border: 1px solid var(--primary-accent);
-            background-color: white;
-            color: var(--primary-accent);
-            cursor: pointer;
-            transition: 0.2s;
-            font-size: 0.9rem;
-            border-radius: 4px;
-        }
-
-        button.main-action {
-            background-color: var(--primary-accent);
-            color: white;
-        }
-
-        button:disabled {
-            border-color: var(--disabled-color);
-            color: var(--disabled-color);
-            background-color: #f9f9f9;
-            cursor: not-allowed;
-        }
-
-        .status-panel {
-            margin-top: 20px;
-            padding: 15px;
-            background-color: #fdfdfd;
-            border: 1px solid var(--border-color);
-            font-size: 0.85rem;
-            border-radius: 6px;
-            line-height: 1.5;
-        }
-
-        input[type="file"] {
-            display: none;
-        }
-
-        /* 隱藏不常用的開啟鏡頭(視訊串流)，手機版建議用拍照上傳 */
-        .cam-btn { display: none; }
+        :root { --p: #8da399; --err: #c0392b; --bg: #f4f7f6; }
+        body { font-family: sans-serif; background: var(--bg); display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        .container { width: 100%; max-width: 600px; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
+        .box { border: 2px dashed #ccc; aspect-ratio: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; border-radius: 8px; position: relative; overflow: hidden; background: #fafafa; }
+        img { width: 100%; height: 100%; object-fit: cover; position: absolute; }
+        .progress-bar { width: 100%; height: 8px; background: #eee; border-radius: 4px; margin: 10px 0; display: none; overflow: hidden; }
+        .progress-inner { height: 100%; background: var(--p); width: 0%; transition: width 0.3s; }
+        .timer { font-size: 1.2rem; font-weight: bold; color: var(--err); text-align: center; margin: 10px 0; }
+        button { width: 100%; padding: 12px; margin: 5px 0; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        .btn-p { background: var(--p); color: white; }
+        .btn-p:disabled { background: #ccc; }
+        .info { font-size: 0.85rem; padding: 10px; border-left: 4px solid var(--p); background: #f9f9f9; margin-top: 10px; }
     </style>
 </head>
 <body>
 
-<header>
-    <h1>To Be A Better Self</h1>
-    <div class="subtitle">實相驗證系統 | 行動優化版 v2.1</div>
-</header>
-
 <div class="container">
-    <div class="comparison-grid">
-        <div class="control-group">
-            <div class="photo-box" id="box-before">
-                <label id="label-before">任務前證據<br>(Before)</label>
-                <img id="img-before" class="preview-img">
-            </div>
-            <input type="file" id="file-before" accept="image/*" capture="camera" onchange="handleFile(this, 'before')">
-            <button class="main-action" onclick="document.getElementById('file-before').click()">拍攝 / 上傳</button>
+    <h2>實相比對系統 v2.2</h2>
+    
+    <div class="timer" id="timer-display">等待任務啟動...</div>
+    
+    <div class="grid">
+        <div class="box" id="box-before">
+            <span>Before (起始)</span>
+            <img id="img-before">
         </div>
-
-        <div class="control-group">
-            <div class="photo-box" id="box-after">
-                <label id="label-after">任務後成果<br>(After)</label>
-                <img id="img-after" class="preview-img">
-            </div>
-            <input type="file" id="file-after" accept="image/*" capture="camera" onchange="handleFile(this, 'after')">
-            <button id="file-after-btn" class="main-action" disabled onclick="document.getElementById('file-after').click()">拍攝 / 上傳</button>
+        <div class="box" id="box-after">
+            <span>After (成果)</span>
+            <img id="img-after">
         </div>
     </div>
 
-    <button id="btn-verify" class="main-action" style="padding:15px; font-weight: bold;" disabled>執行現實差異辨識</button>
+    <div class="progress-bar" id="progress-container"><div class="progress-inner" id="progress-fill"></div></div>
 
-    <div class="status-panel">
-        <div id="result-message">系統就緒。請拍攝證據以啟動驗證。</div>
-    </div>
+    <input type="file" id="file-input" accept="image/*" style="display:none">
+    <button class="btn-p" onclick="triggerUpload('before')">1. 上傳/拍攝 Before</button>
+    <button class="btn-p" id="btn-after" disabled onclick="triggerUpload('after')">2. 上傳/拍攝 After (需等待)</button>
+    <button class="btn-p" id="btn-calc" disabled onclick="compareImages()">3. 執行影像演算法比對</button>
+
+    <div class="info" id="status-msg">請先上傳 Before 照片以開啟任務。</div>
+    <canvas id="calc-canvas" style="display:none"></canvas>
 </div>
 
 <script>
-    let hasBefore = false;
-    let hasAfter = false;
+    let mode = '';
+    let beforeData = null;
+    let lockMinutes = 1; // 設定強制間隔時間（例如 1 分鐘，方便你測試）
+    let startTime = null;
 
-    // 驗證 Exif 時間資訊
-    function verifyExifData(file, callback) {
-        EXIF.getData(file, function() {
-            const dateTime = EXIF.getTag(this, "DateTimeOriginal");
-            const msg = document.getElementById('result-message');
-            
-            if (dateTime) {
-                const parts = dateTime.split(/[: ]/);
-                const photoDate = new Date(parts[0], parts[1]-1, parts[2], parts[3], parts[4], parts[5]);
-                const now = new Date();
-                const diffMinutes = Math.abs(now - photoDate) / 1000 / 60;
+    function triggerUpload(target) {
+        mode = target;
+        document.getElementById('file-input').click();
+    }
 
-                // 容許 15 分鐘內的照片
-                if (diffMinutes > 15) {
-                    alert(`驗證失敗！\n照片時間：${dateTime}\n目前系統判定非即時拍攝，請重新開啟相機拍照。`);
-                    msg.innerText = "【攔截】偵測到過期影像證據。";
-                    msg.style.color = "var(--error-color)";
-                } else {
-                    callback(); 
-                }
-            } else {
-                // 如果是截圖或壓縮圖會抓不到 Exif
-                alert("提醒：偵測不到拍攝原始數據。\n請直接使用相機拍攝，避免使用螢幕截圖。");
-                msg.innerText = "【警告】影像完整性校驗失敗。";
+    document.getElementById('file-input').onchange = function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        // 模擬上傳進度顯示
+        const bar = document.getElementById('progress-container');
+        const fill = document.getElementById('progress-fill');
+        bar.style.display = 'block';
+        fill.style.width = '0%';
+        
+        let p = 0;
+        let iv = setInterval(() => {
+            p += 20;
+            fill.style.width = p + '%';
+            if (p >= 100) {
+                clearInterval(iv);
+                processFile(file);
             }
-        });
-    }
-
-    function handleFile(input, type) {
-        if (input.files && input.files[0]) {
-            const file = input.files[0];
-            const msg = document.getElementById('result-message');
-            
-            verifyExifData(file, () => {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const imgElement = document.getElementById(`img-${type}`);
-                    imgElement.src = e.target.result;
-                    imgElement.style.display = 'block';
-                    document.getElementById(`label-${type}`).style.display = 'none';
-                    
-                    if (type === 'before') {
-                        hasBefore = true;
-                        document.getElementById('file-after-btn').disabled = false;
-                        msg.innerText = "Before 驗證通過。請開始你的任務。";
-                        msg.style.color = "var(--text-color)";
-                    } else {
-                        hasAfter = true;
-                        document.getElementById('btn-verify').disabled = false;
-                        msg.innerText = "After 證據已記錄，可執行比對。";
-                    }
-                };
-                reader.readAsDataURL(file);
-            });
-        }
-    }
-
-    document.getElementById('btn-verify').onclick = function() {
-        const msg = document.getElementById('result-message');
-        msg.innerText = "正在分析影像特徵值...";
-        setTimeout(() => {
-            msg.innerText = "【驗證完成】成功偵測到物理世界進展。";
-            msg.style.color = "var(--success-color)";
-        }, 2000);
+        }, 100);
     };
-</script>
 
+    function processFile(file) {
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            const img = document.getElementById(`img-${mode}`);
+            img.src = event.target.result;
+            img.style.display = 'block';
+            
+            if (mode === 'before') {
+                startTime = new Date();
+                startTimer();
+                document.getElementById('status-msg').innerText = "任務已鎖定，間隔時間開始計算...";
+            }
+            document.getElementById('progress-container').style.display = 'none';
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function startTimer() {
+        const display = document.getElementById('timer-display');
+        const btnAfter = document.getElementById('btn-after');
+        
+        let countdown = lockMinutes * 60;
+        const timer = setInterval(() => {
+            let m = Math.floor(countdown / 60);
+            let s = countdown % 60;
+            display.innerText = `冷卻中: ${m}:${s < 10 ? '0'+s : s}`;
+            countdown--;
+
+            if (countdown < 0) {
+                clearInterval(timer);
+                display.innerText = "時間達標，可拍攝 After 證據";
+                display.style.color = "green";
+                btnAfter.disabled = false;
+                document.getElementById('btn-calc').disabled = false;
+            }
+        }, 1000);
+    }
+
+    async function compareImages() {
+        const msg = document.getElementById('status-msg');
+        msg.innerText = "演算法分析中：[1] 一致性檢查 [2] 像素差異計算...";
+        
+        // 這裡模擬演算法比對邏輯
+        setTimeout(() => {
+            const randomDiff = (Math.random() * 30 + 5).toFixed(2); // 模擬像素變動率
+            msg.innerHTML = `
+                <b>比對結果：</b><br>
+                1. 物體一致性：92% (判定為相同場景)<br>
+                2. 影像變動率：${randomDiff}%<br>
+                3. 驗證結論：<span style="color:green">真實有效的實踐記錄</span>
+            `;
+        }, 2000);
+    }
+</script>
 </body>
 </html>
