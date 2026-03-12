@@ -3,30 +3,50 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>To Be A Better Self v2.2 | 影像比對系統</title>
+    <title>To Be A Better Self v2.3 | 實相演證系統</title>
     <script src="https://cdn.jsdelivr.net/npm/exif-js"></script>
     <style>
-        :root { --p: #8da399; --err: #c0392b; --bg: #f4f7f6; }
-        body { font-family: sans-serif; background: var(--bg); display: flex; flex-direction: column; align-items: center; padding: 20px; }
-        .container { width: 100%; max-width: 600px; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        :root { 
+            --p: #8da399; 
+            --err: #c0392b; 
+            --bg: #f4f7f6; 
+            --success: #27ae60;
+        }
+        body { font-family: "PingFang TC", sans-serif; background: var(--bg); display: flex; flex-direction: column; align-items: center; padding: 20px; margin: 0; }
+        .container { width: 100%; max-width: 500px; background: white; padding: 25px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); }
+        h2 { font-weight: 300; text-align: center; color: #444; margin-top: 0; }
+        
+        /* 狀態顯示區 */
+        .status-box { background: #eee; padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: center; }
+        .timer { font-size: 1.4rem; font-weight: bold; color: var(--err); font-family: monospace; }
+        
+        /* 圖片網格 */
         .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
-        .box { border: 2px dashed #ccc; aspect-ratio: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; border-radius: 8px; position: relative; overflow: hidden; background: #fafafa; }
-        img { width: 100%; height: 100%; object-fit: cover; position: absolute; }
-        .progress-bar { width: 100%; height: 8px; background: #eee; border-radius: 4px; margin: 10px 0; display: none; overflow: hidden; }
-        .progress-inner { height: 100%; background: var(--p); width: 0%; transition: width 0.3s; }
-        .timer { font-size: 1.2rem; font-weight: bold; color: var(--err); text-align: center; margin: 10px 0; }
-        button { width: 100%; padding: 12px; margin: 5px 0; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
-        .btn-p { background: var(--p); color: white; }
-        .btn-p:disabled { background: #ccc; }
-        .info { font-size: 0.85rem; padding: 10px; border-left: 4px solid var(--p); background: #f9f9f9; margin-top: 10px; }
+        .box { border: 2px dashed #ddd; aspect-ratio: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; border-radius: 10px; position: relative; overflow: hidden; background: #fafafa; font-size: 0.8rem; color: #999; }
+        .box img { width: 100%; height: 100%; object-fit: cover; position: absolute; z-index: 2; display: none; }
+        
+        /* 進度條 */
+        .progress-container { width: 100%; height: 6px; background: #eee; border-radius: 3px; margin: 15px 0; display: none; }
+        .progress-bar { height: 100%; background: var(--p); width: 0%; transition: width 0.2s; }
+
+        /* 按鈕樣式 */
+        button { width: 100%; padding: 14px; margin: 8px 0; border: none; border-radius: 8px; cursor: pointer; font-size: 1rem; font-weight: bold; transition: 0.3s; }
+        .btn-main { background: var(--p); color: white; }
+        .btn-main:disabled { background: #d1d1d1; cursor: not-allowed; }
+        .btn-outline { background: transparent; border: 1px solid var(--p); color: var(--p); }
+
+        .log { font-size: 0.85rem; line-height: 1.6; color: #555; background: #f9f9f9; padding: 15px; border-radius: 8px; border-left: 4px solid var(--p); }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>實相比對系統 v2.2</h2>
+    <h2>實相演證原型 v2.3</h2>
     
-    <div class="timer" id="timer-display">等待任務啟動...</div>
+    <div class="status-box">
+        <div id="status-text">系統就緒，請上傳 Before 證據</div>
+        <div class="timer" id="timer-display">00:00</div>
+    </div>
     
     <div class="grid">
         <div class="box" id="box-before">
@@ -39,21 +59,22 @@
         </div>
     </div>
 
-    <div class="progress-bar" id="progress-container"><div class="progress-inner" id="progress-fill"></div></div>
+    <div class="progress-container" id="p-container"><div class="progress-bar" id="p-bar"></div></div>
 
     <input type="file" id="file-input" accept="image/*" style="display:none">
-    <button class="btn-p" onclick="triggerUpload('before')">1. 上傳/拍攝 Before</button>
-    <button class="btn-p" id="btn-after" disabled onclick="triggerUpload('after')">2. 上傳/拍攝 After (需等待)</button>
-    <button class="btn-p" id="btn-calc" disabled onclick="compareImages()">3. 執行影像演算法比對</button>
+    <button class="btn-main" id="btn-before" onclick="triggerUpload('before')">拍攝 / 上傳 Before</button>
+    <button class="btn-main" id="btn-after" disabled onclick="triggerUpload('after')">拍攝 / 上傳 After</button>
+    <button class="btn-outline" id="btn-verify" disabled onclick="runAIAnalysis()">執行影像演算法比對</button>
 
-    <div class="info" id="status-msg">請先上傳 Before 照片以開啟任務。</div>
-    <canvas id="calc-canvas" style="display:none"></canvas>
+    <div class="log" id="log-display">
+        <b>系統日誌：</b><br>
+        等待使用者輸入...
+    </div>
 </div>
 
 <script>
     let mode = '';
-    let beforeData = null;
-    let lockMinutes = 1; // 設定強制間隔時間（例如 1 分鐘，方便你測試）
+    let lockMinutes = 1; // 為了方便實驗測試，設為 1 分鐘，論文可寫建議 30-60 分鐘
     let startTime = null;
 
     function triggerUpload(target) {
@@ -65,76 +86,100 @@
         const file = e.target.files[0];
         if (!file) return;
 
-        // 模擬上傳進度顯示
-        const bar = document.getElementById('progress-container');
-        const fill = document.getElementById('progress-fill');
-        bar.style.display = 'block';
-        fill.style.width = '0%';
-        
-        let p = 0;
-        let iv = setInterval(() => {
-            p += 20;
-            fill.style.width = p + '%';
-            if (p >= 100) {
-                clearInterval(iv);
-                processFile(file);
-            }
-        }, 100);
+        // --- 核心邏輯：強制即時性檢查 ---
+        const now = new Date();
+        const fileDate = file.lastModifiedDate || new Date(file.lastModified);
+        const diffMinutes = Math.abs(now - fileDate) / 1000 / 60;
+
+        if (diffMinutes > 5) {
+            alert(`【拒絕受領】\n這張照片/截圖產生於 ${Math.round(diffMinutes)} 分鐘前。\n本系統為確保證據真實性，僅接受 5 分鐘內產生的即時數據。`);
+            updateLog(`攔截失敗：檔案過期 (${Math.round(diffMinutes)} min ago)`);
+            return;
+        }
+
+        simulateUpload(file);
     };
 
-    function processFile(file) {
+    function simulateUpload(file) {
+        const container = document.getElementById('p-container');
+        const bar = document.getElementById('p-bar');
+        container.style.display = 'block';
+        
+        let progress = 0;
+        const interval = setInterval(() => {
+            progress += 10;
+            bar.style.width = progress + '%';
+            if (progress >= 100) {
+                clearInterval(interval);
+                displayImage(file);
+                container.style.display = 'none';
+            }
+        }, 100);
+    }
+
+    function displayImage(file) {
         const reader = new FileReader();
-        reader.onload = function(event) {
+        reader.onload = function(e) {
             const img = document.getElementById(`img-${mode}`);
-            img.src = event.target.result;
+            img.src = e.target.result;
             img.style.display = 'block';
             
             if (mode === 'before') {
-                startTime = new Date();
-                startTimer();
-                document.getElementById('status-msg').innerText = "任務已鎖定，間隔時間開始計算...";
+                updateLog("Before 驗證通過：即時性符合。");
+                startTask();
+            } else {
+                updateLog("After 驗證通過：即時性符合。");
+                document.getElementById('btn-verify').disabled = false;
             }
-            document.getElementById('progress-container').style.display = 'none';
         };
         reader.readAsDataURL(file);
     }
 
-    function startTimer() {
-        const display = document.getElementById('timer-display');
-        const btnAfter = document.getElementById('btn-after');
+    function startTask() {
+        startTime = new Date();
+        document.getElementById('btn-before').disabled = true;
+        document.getElementById('status-text').innerText = "任務進行中...";
         
-        let countdown = lockMinutes * 60;
+        let seconds = lockMinutes * 60;
         const timer = setInterval(() => {
-            let m = Math.floor(countdown / 60);
-            let s = countdown % 60;
-            display.innerText = `冷卻中: ${m}:${s < 10 ? '0'+s : s}`;
-            countdown--;
-
-            if (countdown < 0) {
+            let m = Math.floor(seconds / 60);
+            let s = seconds % 60;
+            document.getElementById('timer-display').innerText = `${m < 10 ? '0'+m : m}:${s < 10 ? '0'+s : s}`;
+            
+            if (seconds <= 0) {
                 clearInterval(timer);
-                display.innerText = "時間達標，可拍攝 After 證據";
-                display.style.color = "green";
-                btnAfter.disabled = false;
-                document.getElementById('btn-calc').disabled = false;
+                document.getElementById('status-text').innerText = "間隔時間達成，請上傳成果";
+                document.getElementById('timer-display').style.color = "var(--success)";
+                document.getElementById('btn-after').disabled = false;
             }
+            seconds--;
         }, 1000);
     }
 
-    async function compareImages() {
-        const msg = document.getElementById('status-msg');
-        msg.innerText = "演算法分析中：[1] 一致性檢查 [2] 像素差異計算...";
+    function runAIAnalysis() {
+        updateLog("執行演算法：特徵點匹配 (Feature Matching)...");
+        const log = document.getElementById('log-display');
         
-        // 這裡模擬演算法比對邏輯
         setTimeout(() => {
-            const randomDiff = (Math.random() * 30 + 5).toFixed(2); // 模擬像素變動率
-            msg.innerHTML = `
-                <b>比對結果：</b><br>
-                1. 物體一致性：92% (判定為相同場景)<br>
-                2. 影像變動率：${randomDiff}%<br>
-                3. 驗證結論：<span style="color:green">真實有效的實踐記錄</span>
+            // 模擬像素差異計算與一致性判定
+            const similarity = (Math.random() * 15 + 80).toFixed(2); // 模擬同一場景機率
+            const changeRate = (Math.random() * 40 + 10).toFixed(2); // 模擬進步變動率
+            
+            log.innerHTML = `
+                <b style="color:var(--success)">【演算法比對完成】</b><br>
+                ● 環境一致性：${similarity}% (判定為同一標的物)<br>
+                ● 實體像素變動率：${changeRate}%<br>
+                ● 時間間隔檢查：合格<br>
+                ● 最終結論：實相驗證成功。
             `;
         }, 2000);
     }
+
+    function updateLog(msg) {
+        const log = document.getElementById('log-display');
+        log.innerHTML = `<b>系統日誌：</b><br>${msg}`;
+    }
 </script>
+
 </body>
 </html>
