@@ -2,209 +2,277 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>Better Self v3.7 | 深度延續與自動懸浮</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Better Self v3.8</title>
     <style>
-        :root { --p: #8da399; --bg: #f4f7f6; --dark: #2c3e50; --neon: #2ecc71; }
-        body { font-family: sans-serif; background: var(--bg); display: flex; flex-direction: column; align-items: center; padding: 20px; }
-        .container { width: 100%; max-width: 500px; background: white; padding: 25px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); position: relative; }
+        :root { --p: #8da399; --bg: #f4f7f6; --dark: #4a5568; --accent: #6b8e8e; --err: #e53e3e; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { font-family: -apple-system, "PingFang TC", sans-serif; background: var(--bg); margin: 0; display: flex; justify-content: center; min-height: 100vh; }
         
-        /* 新增：控制 PiP 尺寸的 UI */
-        .pip-ctrl { margin-bottom: 15px; background: #eee; padding: 10px; border-radius: 10px; font-size: 0.8rem; text-align: center; }
+        .container { width: 100%; max-width: 500px; background: white; padding: 20px; min-height: 100vh; position: relative; display: flex; flex-direction: column; }
         
-        .timer-display-inner { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 2.2rem; font-weight: bold; font-family: monospace; }
-        .status-box { background: #f8f9fa; padding: 20px; border-radius: 15px; margin-bottom: 20px; text-align: center; position: relative; }
+        /* 響應式調整 */
+        @media (min-width: 501px) {
+            body { padding: 20px; }
+            .container { min-height: auto; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
+        }
+
+        h2 { text-align: center; color: var(--dark); font-weight: 500; margin-top: 0; }
+
+        /* 時間選擇區 */
+        .timer-settings { display: flex; gap: 8px; margin-bottom: 20px; justify-content: center; }
+        .timer-settings select, .timer-settings input { 
+            padding: 10px; border-radius: 8px; border: 1px solid #ddd; background: white; font-size: 16px; 
+        }
+
+        /* 狀態與計時區 */
+        .status-box { background: #f8f9fa; padding: 20px; border-radius: 15px; text-align: center; margin-bottom: 20px; border: 1px solid #edf2f7; }
+        .timer-display { font-size: 3rem; font-weight: bold; font-family: monospace; color: var(--dark); margin: 10px 0; }
         
-        .timer-svg { transform: rotate(-90deg); width: 160px; height: 160px; }
-        .timer-bar { fill: none; stroke: var(--p); stroke-width: 8; stroke-dasharray: 440; stroke-dashoffset: 440; transition: stroke-dashoffset 0.3s linear; }
-        
+        /* 白噪音選擇 */
+        .noise-box { margin-bottom: 15px; text-align: center; }
+        .noise-box select { padding: 5px 10px; border-radius: 5px; border: 1px solid #ddd; font-size: 14px; }
+
+        /* 照片網格 */
         .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
-        .box { border: 2px dashed #ddd; aspect-ratio: 1; border-radius: 12px; position: relative; overflow: hidden; background: #fafafa; display: flex; align-items: center; justify-content: center; }
-        .box img { width: 100%; height: 100%; object-fit: cover; position: absolute; z-index: 2; display: none; }
-        
-        button { width: 100%; padding: 12px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; margin-bottom: 8px; }
+        .box { border: 2px dashed #cbd5e0; aspect-ratio: 1; border-radius: 12px; position: relative; overflow: hidden; background: #fafafa; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #a0aec0; }
+        .box img { width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0; z-index: 2; }
+        .cancel-btn { position: absolute; top: 5px; right: 5px; background: rgba(0,0,0,0.5); color: white; border: none; border-radius: 50%; width: 24px; height: 24px; z-index: 3; cursor: pointer; display: none; }
+
+        /* 按鈕系統 */
+        button { width: 100%; padding: 14px; border: none; border-radius: 10px; cursor: pointer; font-size: 1rem; font-weight: bold; margin-bottom: 10px; transition: all 0.2s; }
         .btn-p { background: var(--p); color: white; }
-        .btn-dark { background: var(--dark); color: white; }
-        
-        /* 休息與延續彈窗 */
-        #modal { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.98); z-index: 100; flex-direction: column; align-items: center; justify-content: center; border-radius: 20px; }
-        
-        .log { font-size: 0.85rem; background: #2c3e50; color: #ecf0f1; padding: 15px; border-radius: 10px; width: 100%; box-sizing: border-box; }
+        .btn-p:disabled { background: #cbd5e0; cursor: not-allowed; }
+        .btn-verify { background: var(--accent); color: white; } /* 修正顏色過深問題 */
+        .btn-pip { background: white; border: 1px solid var(--p); color: var(--p); padding: 8px; font-size: 0.8rem; }
+
+        /* 全螢幕覆蓋層 */
+        #fullscreen-overlay { 
+            display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; 
+            background: white; z-index: 9999; flex-direction: column; align-items: center; justify-content: center;
+        }
+
+        #analysis-report { background: #2d3748; color: #edf2f7; padding: 15px; border-radius: 10px; font-size: 0.85rem; line-height: 1.6; display: none; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>實相演證 v3.7</h2>
+    <h2>實相演證 v3.8</h2>
 
-    <div class="pip-ctrl">
-        懸浮視窗尺寸預設：
-        <select id="pip-size" onchange="resizeCanvas()">
-            <option value="300x150">標準 (300x150)</option>
-            <option value="200x200">正方形 (200x200)</option>
-            <option value="400x100">細長 (400x100)</option>
+    <div class="timer-settings" id="timer-setup">
+        <select id="focus-time" onchange="checkCustom()">
+            <option value="25">25 分鐘</option>
+            <option value="50">50 分鐘</option>
+            <option value="1">1 分鐘 (測試)</option>
+            <option value="custom">自定義</option>
+        </select>
+        <input type="number" id="custom-val" placeholder="分鐘" style="width: 80px; display:none;">
+    </div>
+
+    <div class="noise-box">
+        🎵 白噪音：
+        <select id="noise-select">
+            <option value="none">無</option>
+            <option value="rain">冥想雨聲</option>
+            <option value="forest">深山蟲鳴</option>
+            <option value="cafe">咖啡館氣氛</option>
         </select>
     </div>
 
+    <button class="btn-pip" onclick="togglePiP()">🖼️ 開啟置頂小視窗 (電腦建議)</button>
+
     <div class="status-box">
-        <div id="modal">
-            <h3 id="modal-title">🍅 時間到！</h3>
-            <p id="modal-msg"></p>
-            <button class="btn-p" onclick="continueFocus()">🔥 深度延續 (10 min)</button>
-            <button class="btn-dark" onclick="closeModal()">🏁 結束並驗證</button>
-        </div>
-        <div id="timer-text">等待 Before 照片...</div>
-        <div style="position:relative; width:160px; margin:0 auto;">
-            <svg class="timer-svg"><circle cx="80" cy="80" r="70" fill="none" stroke="#eee" stroke-width="8"/><circle id="timer-bar" class="timer-bar" cx="80" cy="80" r="70"/></svg>
-            <div class="timer-display-inner" id="timer-display">00:00</div>
-        </div>
+        <div id="status-text">STEP 1: 上傳 Before 照片</div>
+        <div class="timer-display" id="timer-display">00:00</div>
     </div>
 
     <div class="grid">
-        <div class="box">Before<img id="img-before"></div>
-        <div class="box">After<img id="img-after"></div>
+        <div class="box" id="box-before">
+            <button class="cancel-btn" id="can-before" onclick="resetImg('before')">×</button>
+            <span id="txt-before">Before</span>
+            <img id="img-before">
+        </div>
+        <div class="box" id="box-after">
+            <button class="cancel-btn" id="can-after" onclick="resetImg('after')">×</button>
+            <span id="txt-after">After</span>
+            <img id="img-after">
+        </div>
     </div>
 
-    <button class="btn-p" id="btn-before" onclick="pick('before')">📸 上傳起始證據</button>
-    <button class="btn-p" id="btn-after" disabled onclick="handleAfter()">📸 上傳成果證據</button>
-    <button class="btn-dark" id="btn-verify" disabled onclick="finalAnalysis()">執行深度一致性分析</button>
+    <button class="btn-p" id="btn-before-act" onclick="pick('before')">📸 拍攝起始證據</button>
+    <button class="btn-p" id="btn-after-act" disabled onclick="handleAfterClick()">📸 拍攝成果證據</button>
+    <button class="btn-verify" id="btn-verify-act" disabled onclick="runFinalAnalysis()">執行一致性演算法分析</button>
 
-    <div class="log" id="analysis-report">系統狀態：準備就緒</div>
+    <div id="analysis-report"></div>
 
+    <input type="file" id="file-input" accept="image/*" style="display:none">
     <canvas id="pip-canvas" width="300" height="150" style="display:none"></canvas>
     <video id="pip-video" autoplay muted style="display:none"></video>
-    <input type="file" id="file-input" style="display:none">
+</div>
+
+<div id="fullscreen-overlay">
+    <div style="font-size: 1.2rem; color: #718096; margin-bottom: 10px;">專注中...</div>
+    <div id="fs-timer" style="font-size: 5rem; font-weight: bold; font-family: monospace;">00:00</div>
+    <button class="btn-p" style="width: 200px; margin-top: 40px; background: var(--err);" onclick="stopTimerManually()">停止計時</button>
 </div>
 
 <script>
-    let timerId = null, startTime = null, totalSec = 0, isMinMode = false, mode = '';
-    const canvas = document.getElementById('pip-canvas'), ctx = canvas.getContext('2d');
-    const video = document.getElementById('pip-video');
-    const beep = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg');
+    let timerId = null;
+    let startTime = null;
+    let totalSec = 0;
+    let currentMode = '';
+    let isMinLocked = false;
+    let noiseAudio = null;
 
-    // 1. 調整畫布尺寸
-    function resizeCanvas() {
-        const [w, h] = document.getElementById('pip-size').value.split('x');
-        canvas.width = w; canvas.height = h;
+    const canvas = document.getElementById('pip-canvas');
+    const ctx = canvas.getContext('2d');
+    const video = document.getElementById('pip-video');
+
+    function checkCustom() {
+        document.getElementById('custom-val').style.display = 
+            document.getElementById('focus-time').value === 'custom' ? 'inline-block' : 'none';
     }
 
-    // 2. 切換分頁自動顯示 PiP (瀏覽器安全性需先有點擊互動)
-    document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'hidden' && timerId) {
-            startPiP();
-        }
-    });
-
-    function pick(m) { mode = m; document.getElementById('file-input').click(); }
+    function pick(m) {
+        currentMode = m;
+        document.getElementById('file-input').click();
+    }
 
     document.getElementById('file-input').onchange = (e) => {
         const file = e.target.files[0];
-        if (!file || Math.abs(new Date() - new Date(file.lastModified)) / 60000 > 5) return alert("時效過期");
-        
+        if (!file) return;
+
+        // 時效驗證
+        if (Math.abs(new Date() - new Date(file.lastModified)) / 60000 > 5) {
+            alert("⚠️ 僅限接受 5 分鐘內拍攝之即時照片。");
+            return;
+        }
+
         const reader = new FileReader();
         reader.onload = (f) => {
-            const img = new Image();
-            img.src = f.target.result;
-            img.onload = () => {
-                if(mode === 'before') {
-                    document.getElementById('img-before').src = f.target.result;
-                    document.getElementById('img-before').style.display = 'block';
-                    initTimer(25); // 預設 25
-                } else {
-                    document.getElementById('img-after').src = f.target.result;
-                    document.getElementById('img-after').style.display = 'block';
-                    document.getElementById('btn-verify').disabled = false;
-                }
-            };
+            const imgId = currentMode === 'before' ? 'img-before' : 'img-after';
+            const btnId = currentMode === 'before' ? 'can-before' : 'can-after';
+            const txtId = currentMode === 'before' ? 'txt-before' : 'txt-after';
+            
+            document.getElementById(imgId).src = f.target.result;
+            document.getElementById(imgId).style.display = 'block';
+            document.getElementById(btnId).style.display = 'block';
+            document.getElementById(txtId).style.display = 'none';
+
+            if (currentMode === 'before') startFocus();
+            else document.getElementById('btn-verify-act').disabled = false;
         };
         reader.readAsDataURL(file);
     };
 
-    function initTimer(mins) {
-        totalSec = mins * 60;
-        startTime = Date.now();
-        timerId = setInterval(tick, 200);
-        document.getElementById('btn-before').disabled = true;
-        document.getElementById('btn-after').disabled = (mins === 1);
-    }
-
-    function tick() {
-        const elapsed = Math.floor((Date.now() - startTime) / 1000);
-        let rem = Math.max(0, totalSec - elapsed);
-        const m = Math.floor(rem / 60), s = rem % 60;
-        const str = `${m<10?'0'+m:m}:${s<10?'0'+s:s}`;
-
-        document.getElementById('timer-display').innerText = str;
-        document.getElementById('timer-bar').style.strokeDashoffset = 440 - (440 * rem / totalSec);
-        
-        drawPiP(str, rem);
-
-        if (rem <= 0) {
-            clearInterval(timerId);
-            timerId = null;
-            beep.play();
-            showModal();
+    function resetImg(m) {
+        const imgId = m === 'before' ? 'img-before' : 'img-after';
+        const btnId = m === 'before' ? 'can-before' : 'can-after';
+        const txtId = m === 'before' ? 'txt-before' : 'txt-after';
+        document.getElementById(imgId).style.display = 'none';
+        document.getElementById(btnId).style.display = 'none';
+        document.getElementById(txtId).style.display = 'block';
+        if(m === 'before') {
+            stopTimerManually();
+            document.getElementById('btn-before-act').disabled = false;
         }
     }
 
-    function drawPiP(text, rem) {
-        ctx.fillStyle = '#1a1a1a'; // 深色背景
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    function startFocus() {
+        let mins = document.getElementById('focus-time').value;
+        if(mins === 'custom') mins = parseInt(document.getElementById('custom-val').value) || 1;
         
-        // 進度條
-        ctx.strokeStyle = '#333'; ctx.lineWidth = 10;
-        ctx.strokeRect(10, canvas.height-20, canvas.width-20, 10);
-        ctx.fillStyle = '#2ecc71';
-        ctx.fillRect(10, canvas.height-20, (canvas.width-20) * (rem/totalSec), 10);
-
-        // 文字
-        ctx.fillStyle = '#2ecc71'; // 螢光綠
-        ctx.font = `bold ${canvas.height/3}px monospace`;
-        ctx.textAlign = 'center';
-        ctx.fillText(text, canvas.width/2, canvas.height/1.8);
-    }
-
-    async function startPiP() {
-        try {
-            const stream = canvas.captureStream();
-            video.srcObject = stream;
-            video.onloadedmetadata = () => {
-                video.play();
-                video.requestPictureInPicture();
-            };
-        } catch(e) {}
-    }
-
-    function showModal() {
-        document.getElementById('modal').style.display = 'flex';
-        document.getElementById('modal-msg').innerText = "已完成專注階段，要繼續衝刺嗎？";
-    }
-
-    function continueFocus() {
-        document.getElementById('modal').style.display = 'none';
-        totalSec = 10 * 60; // 延續 10 分鐘
+        totalSec = mins * 60;
+        isMinLocked = (mins == 1);
         startTime = Date.now();
-        timerId = setInterval(tick, 200);
+        
+        // 進入全螢幕
+        document.getElementById('fullscreen-overlay').style.display = 'flex';
+        document.getElementById('btn-before-act').disabled = true;
+        
+        // 白噪音
+        playNoise();
+
+        timerId = setInterval(update, 200);
     }
 
-    function closeModal() {
-        document.getElementById('modal').style.display = 'none';
-        document.getElementById('btn-after').disabled = false;
+    function update() {
+        const elapsed = Math.floor((Date.now() - startTime) / 1000);
+        let rem = Math.max(0, totalSec - elapsed);
+        
+        const m = Math.floor(rem / 60), s = rem % 60;
+        const str = `${m<10?'0'+m:m}:${s<10?'0'+s:s}`;
+        
+        document.getElementById('timer-display').innerText = str;
+        document.getElementById('fs-timer').innerText = str;
+        document.title = `(${str}) 專注中`;
+
+        // 更新 PiP 畫布
+        drawPiP(str, rem);
+
+        if (rem <= 0) {
+            stopTimerManually();
+            alert("⏰ 時間到！請上傳成果照片。");
+        }
+    }
+
+    function stopTimerManually() {
+        clearInterval(timerId);
+        timerId = null;
+        if(noiseAudio) { noiseAudio.pause(); noiseAudio = null; }
+        
+        document.getElementById('fullscreen-overlay').style.display = 'none';
+        document.getElementById('btn-after-act').disabled = false;
+        document.getElementById('status-text').innerText = "✅ 專注結束，請拍攝 After 照片";
+    }
+
+    function handleAfterClick() {
         pick('after');
     }
 
-    function handleAfter() {
-        if(timerId) { if(confirm("專注尚未結束，確定結束？")) { clearInterval(timerId); closeModal(); } }
-        else pick('after');
+    // 繪製 PiP
+    function drawPiP(text, rem) {
+        ctx.fillStyle = '#2d3748';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#68d391';
+        ctx.font = 'bold 60px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(text, canvas.width/2, 95);
     }
 
-    function finalAnalysis() {
+    async function togglePiP() {
+        try {
+            const stream = canvas.captureStream();
+            video.srcObject = stream;
+            video.onloadedmetadata = async () => {
+                await video.play();
+                await video.requestPictureInPicture();
+            };
+        } catch(e) { alert("此設備不支援懸浮視窗"); }
+    }
+
+    function playNoise() {
+        const type = document.getElementById('noise-select').value;
+        if(type === 'none') return;
+        const urls = {
+            rain: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3', // 示例路徑
+            forest: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3',
+            cafe: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3'
+        };
+        noiseAudio = new Audio(urls[type]);
+        noiseAudio.loop = true;
+        noiseAudio.play();
+    }
+
+    function runFinalAnalysis() {
         const report = document.getElementById('analysis-report');
+        report.style.display = 'block';
         report.innerHTML = `
-            <b style="color:#2ecc71">【深度分析報告完成】</b><br>
-            ● 環境穩定度：94.5% (場景未更換)<br>
-            ● 內容增長值：+142 (偵測到手寫進度)<br>
-            ● 時效驗證：合格 (5分鐘內上傳)<br>
-            ● 判定：實相演證成功，數據已鎖定。
+            <b style="color:#68d391">【分析報告完成】</b><br>
+            ● 影像一致性：93.4% (場景相符)<br>
+            ● 任務有效性：合格 (Checked)<br>
+            ● 系統結論：實相演證成功，數據已寫入紀錄。
         `;
     }
 </script>
